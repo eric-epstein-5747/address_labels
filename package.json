@@ -1,0 +1,57 @@
+{
+  "name": "address-label-manager",
+  "version": "1.0.0",
+  "description": "Cross-platform app for managing address labels in Word documents",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:linux": "electron-builder --linux",
+    "build:win": "electron-builder --win",
+    "build:all": "electron-builder --linux --win"
+  },
+  "keywords": [
+    "address",
+    "labels",
+    "contacts",
+    "electron"
+  ],
+  "author": {
+    "name": "Address Label Manager",
+    "email": "noreply@example.com"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "docx": "^8.5.0",
+    "jsdom": "^23.0.0",
+    "mammoth": "^1.6.0"
+  },
+  "build": {
+    "appId": "com.addresslabels.app",
+    "productName": "Address Label Manager",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!data/*"
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    }
+  }
+}
