@@ -6,9 +6,10 @@
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
+    "build:mac": "electron-builder --mac",
     "build:linux": "electron-builder --linux",
     "build:win": "electron-builder --win",
-    "build:all": "electron-builder --linux --win"
+    "build:all": "electron-builder --linux --win --mac"
   },
   "keywords": [
     "address",
@@ -22,13 +23,14 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "electron": "^28.0.0",
+    "electron": "^39.2.7",
     "electron-builder": "^24.9.1"
   },
   "dependencies": {
     "docx": "^8.5.0",
     "jsdom": "^23.0.0",
-    "mammoth": "^1.6.0"
+    "mammoth": "^1.6.0",
+    "word-extractor": "^1.0.4"
   },
   "build": {
     "appId": "com.addresslabels.app",
@@ -40,6 +42,13 @@
       "**/*",
       "!data/*"
     ],
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.utilities"
+    },
     "linux": {
       "target": [
         "AppImage",
