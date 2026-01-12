@@ -105,10 +105,15 @@ npm run build:win
 ```
 
 This will create:
-- NSIS installer (.exe)
-- Portable executable
+- `Address Label Manager Setup 1.0.0.exe` - Full installer with Start Menu shortcuts
+- `Address Label Manager 1.0.0.exe` - Portable version (no installation required)
 
 Output will be in the `dist/` directory.
+
+**Note:** By default, this builds for x64 (Intel/AMD). To build for ARM64 Windows, use:
+```bash
+npm run build:win -- --arm64
+```
 
 ### For All Platforms
 
@@ -138,23 +143,34 @@ npm run build:all
 ### Linux
 
 **AppImage:**
-1. Make the AppImage executable: `chmod +x Address-Label-Manager-*.AppImage`
-2. Run it: `./Address-Label-Manager-*.AppImage`
+1. Make the AppImage executable: `chmod +x address-label-manager-*.AppImage`
+2. Run it: `./address-label-manager-*.AppImage`
+3. No installation required - can run from any location
 
 **Debian/Ubuntu (.deb):**
 ```bash
 sudo dpkg -i address-label-manager_*.deb
 ```
 
+Then launch from your applications menu or run `address-label-manager` from terminal.
+
 ### Windows
 
-**NSIS Installer:**
-1. Double-click the `.exe` installer
-2. Follow the installation wizard
+**Full Installer (Recommended):**
+1. Double-click `Address Label Manager Setup 1.0.0.exe`
+2. Windows may show a security warning (app is not signed)
+   - Click "More info" then "Run anyway"
+3. The installer will automatically install the app and create shortcuts
+4. Launch from Start Menu or Desktop shortcut
 
-**Portable:**
-1. Extract the portable zip
-2. Run `Address Label Manager.exe`
+**Portable Version:**
+1. Double-click `Address Label Manager 1.0.0.exe`
+2. Windows may show a security warning (app is not signed)
+   - Click "More info" then "Run anyway"
+3. The app runs without installation
+4. Can be placed on USB drive or any location
+
+**Note:** For detailed Windows installation instructions, see [WINDOWS_INSTALL.md](WINDOWS_INSTALL.md)
 
 ## Technical Details
 
