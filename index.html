@@ -12,6 +12,8 @@
       <h1>Address Label Manager</h1>
       <div class="header-buttons">
         <button id="openFileBtn" class="btn btn-primary">Open Address File</button>
+        <button id="loadDefaultBtn" class="btn btn-secondary">Load Default</button>
+        <button id="saveDefaultBtn" class="btn btn-warning" disabled>Save as Default</button>
         <button id="saveBtn" class="btn btn-success" disabled>Save</button>
         <button id="saveAsBtn" class="btn btn-success" disabled>Save As</button>
       </div>
@@ -69,6 +71,55 @@
         <div class="modal-footer">
           <button id="cancelAddBtn" class="btn btn-secondary">Cancel</button>
           <button id="confirmAddBtn" class="btn btn-primary">Add Contact</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="editSortKeyModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Edit Sort Key</h2>
+          <button class="close-btn-sort">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="editContactName">Contact Name:</label>
+            <input type="text" id="editContactName" readonly>
+          </div>
+          <div class="form-group">
+            <label for="editSortKey">Sort As:</label>
+            <input type="text" id="editSortKey" placeholder="Enter sort key (e.g., Smith)">
+            <small>This determines where the contact appears alphabetically</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancelEditSortBtn" class="btn btn-secondary">Cancel</button>
+          <button id="confirmEditSortBtn" class="btn btn-primary">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="editContactModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Edit Contact</h2>
+          <button class="close-btn-edit">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="editFullAddress">Full Address:</label>
+            <textarea id="editFullAddress" rows="6" placeholder="Name&#10;Street Address&#10;City, State ZIP"></textarea>
+            <small>Each line will be preserved exactly as entered</small>
+          </div>
+          <div class="form-group">
+            <label for="editContactSortKey">Sort As:</label>
+            <input type="text" id="editContactSortKey" placeholder="Enter sort key (e.g., Smith)">
+            <small>Leave blank to auto-detect from name</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancelEditContactBtn" class="btn btn-secondary">Cancel</button>
+          <button id="confirmEditContactBtn" class="btn btn-primary">Save</button>
         </div>
       </div>
     </div>

@@ -309,3 +309,43 @@ ipcMain.handle('save-as-word-file', async (event, contacts) => {
     return { success: false, error: error.message };
   }
 });
+
+// Get default contacts file path
+function getDefaultContactsPath() {
+  return path.join(app.getPath('userData'), 'default-contacts.json');
+}
+
+// Load default contacts
+ipcMain.handle('load-default-contacts', async () => {
+  try {
+    const defaultPath = getDefaultContactsPath();
+    const data = await fs.readFile(defaultPath, 'utf8');
+    const contacts = JSON.parse(data);
+    return { success: true, contacts };
+  } catch (error) {
+    // File doesn't exist or can't be read - this is OK
+    return { success: false, error: 'No default contacts file found' };
+  }
+});
+
+// Save default contacts
+ipcMain.handle('save-default-contacts', async (event, contacts) => {
+  try {
+    const defaultPath = getDefaultContactsPath();
+    await fs.writeFile(defaultPath, JSON.stringify(contacts, null, 2), 'utf8');
+    return { success: true, filePath: defaultPath };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Check if default contacts exist
+ipcMain.handle('has-default-contacts', async () => {
+  try {
+    const defaultPath = getDefaultContactsPath();
+    await fs.access(defaultPath);
+    return { success: true, exists: true };
+  } catch (error) {
+    return { success: true, exists: false };
+  }
+});
