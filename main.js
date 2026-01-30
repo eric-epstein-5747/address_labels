@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const mammoth = require('mammoth');
 const WordExtractor = require('word-extractor');
-const { Document, Packer, Table, TableCell, TableRow, Paragraph, TextRun, WidthType, AlignmentType, VerticalAlign } = require('docx');
+const { Document, Packer, Table, TableCell, TableRow, Paragraph, TextRun, WidthType, AlignmentType, VerticalAlign, PageOrientation, convertInchesToTwip, BorderStyle, TableLayoutType, HeightRule } = require('docx');
 const { JSDOM } = require('jsdom');
 
 let mainWindow;
@@ -136,7 +136,17 @@ ipcMain.handle('read-word-file', async (event, filePath) => {
         tables.forEach(table => {
           const cells = table.querySelectorAll('td');
           cells.forEach(cell => {
-            const text = cell.textContent.trim();
+            // Extract paragraphs and preserve line breaks
+            const paragraphs = cell.querySelectorAll('p');
+            let text;
+            if (paragraphs.length > 0) {
+              // Join paragraph contents with newlines to preserve address formatting
+              const lines = Array.from(paragraphs).map(p => p.textContent.trim()).filter(l => l);
+              text = lines.join('\n');
+            } else {
+              // Fallback to textContent if no paragraphs
+              text = cell.textContent.trim();
+            }
             if (text) {
               contacts.push(text);
             }
@@ -181,20 +191,39 @@ async function saveContactsToWord(contacts, filePath) {
   // Avery 5160 specifications (in TWIPs: 1 inch = 1440 TWIPs)
   const labelsPerRow = 3;
   const rowsPerPage = 10;
-  const labelsPerPage = 30;
 
-  // Avery 5160: 2.625" width x 1" height
-  const labelWidth = 2.625 * 1440; // 3780 TWIPs
-  const labelHeight = 1 * 1440; // 1440 TWIPs
+  // Avery 5160 exact specifications:
+  // - Label size: 2.625" x 1"
+  // - Top margin: 0.5"
+  // - Side margins: 0.1875" (3/16")
+  // - Horizontal gap between labels: 0.125"
+  // - Vertical gap: 0
+  const labelWidth = convertInchesToTwip(2.625);
+  const labelHeight = convertInchesToTwip(1);
+  const horizontalGap = convertInchesToTwip(0.125);
+
+  // Page margins for Avery 5160
+  const topMargin = convertInchesToTwip(0.5);
+  const bottomMargin = convertInchesToTwip(0.5);
+  const leftMargin = convertInchesToTwip(0.1875);
+  const rightMargin = convertInchesToTwip(0.1875);
 
   const sections = [];
   let contactIndex = 0;
+
+  // Helper to create a cell with no borders
+  const noBorders = {
+    top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }
+  };
 
   while (contactIndex < contacts.length) {
     const tableRows = [];
 
     // Create 10 rows for this page
-    for (let row = 0; row < rowsPerPage && contactIndex < contacts.length; row++) {
+    for (let row = 0; row < rowsPerPage; row++) {
       const cells = [];
 
       // Create 3 cells per row
@@ -206,8 +235,7 @@ async function saveContactsToWord(contacts, filePath) {
           const paragraphs = lines.map(line =>
             new Paragraph({
               text: line,
-              spacing: { after: 50 },
-              style: 'Normal'
+              spacing: { after: 0, line: 240 }, // Single line spacing (240 twips = 1 line)
             })
           );
 
@@ -215,22 +243,35 @@ async function saveContactsToWord(contacts, filePath) {
             new TableCell({
               children: paragraphs.length > 0 ? paragraphs : [new Paragraph('')],
               width: { size: labelWidth, type: WidthType.DXA },
-              verticalAlign: VerticalAlign.TOP,
+              verticalAlign: VerticalAlign.CENTER,
               margins: {
-                top: 50,
-                bottom: 50,
-                left: 100,
-                right: 100
-              }
+                top: convertInchesToTwip(0.05),
+                bottom: convertInchesToTwip(0.05),
+                left: convertInchesToTwip(0.1),
+                right: convertInchesToTwip(0.1)
+              },
+              borders: noBorders
             })
           );
           contactIndex++;
         } else {
-          // Empty cell
+          // Empty cell to fill remaining slots
           cells.push(
             new TableCell({
               children: [new Paragraph('')],
-              width: { size: labelWidth, type: WidthType.DXA }
+              width: { size: labelWidth, type: WidthType.DXA },
+              borders: noBorders
+            })
+          );
+        }
+
+        // Add horizontal gap cell between labels (except after last column)
+        if (col < labelsPerRow - 1) {
+          cells.push(
+            new TableCell({
+              children: [new Paragraph('')],
+              width: { size: horizontalGap, type: WidthType.DXA },
+              borders: noBorders
             })
           );
         }
@@ -238,22 +279,32 @@ async function saveContactsToWord(contacts, filePath) {
 
       tableRows.push(new TableRow({
         children: cells,
-        height: { value: labelHeight, rule: 'exact' }
+        height: { value: labelHeight, rule: HeightRule.EXACT }
       }));
     }
 
     const table = new Table({
       rows: tableRows,
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      margins: {
-        top: 0,
-        bottom: 0,
-        left: 0,
-        right: 0
-      }
+      layout: TableLayoutType.FIXED,
+      width: { size: convertInchesToTwip(8.125), type: WidthType.DXA }, // 3 labels + 2 gaps
     });
 
     sections.push({
+      properties: {
+        page: {
+          margin: {
+            top: topMargin,
+            bottom: bottomMargin,
+            left: leftMargin,
+            right: rightMargin
+          },
+          size: {
+            width: convertInchesToTwip(8.5),
+            height: convertInchesToTwip(11),
+            orientation: PageOrientation.PORTRAIT
+          }
+        }
+      },
       children: [table]
     });
   }
