@@ -5,6 +5,8 @@ const mammoth = require('mammoth');
 const WordExtractor = require('word-extractor');
 const { Document, Packer, Table, TableCell, TableRow, Paragraph, TextRun, WidthType, AlignmentType, VerticalAlign, PageOrientation, convertInchesToTwip, BorderStyle, TableLayoutType, HeightRule } = require('docx');
 const { JSDOM } = require('jsdom');
+const PizZip = require('pizzip');
+const Docxtemplater = require('docxtemplater');
 
 let mainWindow;
 
@@ -186,32 +188,52 @@ ipcMain.handle('read-word-file', async (event, filePath) => {
   }
 });
 
-// Shared function to save contacts to Word file
+// Get path to template file (works both in dev and packaged app)
+function getTemplatePath() {
+  const templateName = 'Avery5160Template.docx';
+  // Check if running in packaged app
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'templates', templateName);
+  }
+  // Development mode
+  return path.join(__dirname, 'templates', templateName);
+}
+
+// Shared function to save contacts to Word file using template as scaffold
 async function saveContactsToWord(contacts, filePath) {
-  // Avery 5160 specifications (in TWIPs: 1 inch = 1440 TWIPs)
   const labelsPerRow = 3;
   const rowsPerPage = 10;
+  const labelsPerPage = labelsPerRow * rowsPerPage;
 
-  // Avery 5160 exact specifications:
-  // - Label size: 2.625" x 1"
-  // - Top margin: 0.5"
-  // - Side margins: 0.1875" (3/16")
-  // - Horizontal gap between labels: 0.125"
-  // - Vertical gap: 0
-  const labelWidth = convertInchesToTwip(2.625);
-  const labelHeight = convertInchesToTwip(1);
-  const horizontalGap = convertInchesToTwip(0.125);
+  // Avery 5160 exact specifications (all in TWIPs: 1 inch = 1440 TWIPs)
+  // Page: 8.5" x 11" = 12240 x 15840 TWIPs
+  // Side margins: 0.1875" = 270 TWIPs each
+  // Available width: 12240 - 540 = 11700 TWIPs
+  // Column width: 11700 / 3 = 3900 TWIPs per column
+  // Row height: 1" = 1440 TWIPs
 
-  // Page margins for Avery 5160
-  const topMargin = convertInchesToTwip(0.5);
-  const bottomMargin = convertInchesToTwip(0.5);
-  const leftMargin = convertInchesToTwip(0.1875);
-  const rightMargin = convertInchesToTwip(0.1875);
+  const pageWidth = 12240;  // 8.5"
+  const pageHeight = 15840; // 11"
+  const topMargin = 720;    // 0.5"
+  const bottomMargin = 720; // 0.5"
+  const leftMargin = 270;   // 0.1875"
+  const rightMargin = 270;  // 0.1875"
+
+  const tableWidth = pageWidth - leftMargin - rightMargin; // 11700 TWIPs
+  const columnWidth = Math.floor(tableWidth / labelsPerRow); // 3900 TWIPs
+  const labelHeight = 1440; // 1"
+
+  // Cell margins for padding inside each label
+  const cellMarginTop = 72;    // 0.05"
+  const cellMarginBottom = 72; // 0.05"
+  const cellMarginLeft = 115;  // ~0.08"
+  const cellMarginRight = 115; // ~0.08"
 
   const sections = [];
+  const totalPages = Math.ceil(contacts.length / labelsPerPage);
   let contactIndex = 0;
 
-  // Helper to create a cell with no borders
+  // No visible borders
   const noBorders = {
     top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
     bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
@@ -219,7 +241,8 @@ async function saveContactsToWord(contacts, filePath) {
     right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }
   };
 
-  while (contactIndex < contacts.length) {
+  // Create pages
+  for (let page = 0; page < Math.max(1, totalPages); page++) {
     const tableRows = [];
 
     // Create 10 rows for this page
@@ -228,53 +251,44 @@ async function saveContactsToWord(contacts, filePath) {
 
       // Create 3 cells per row
       for (let col = 0; col < labelsPerRow; col++) {
+        let cellChildren;
+
         if (contactIndex < contacts.length) {
           const contact = contacts[contactIndex];
           const lines = contact.fullAddress.split('\n');
 
-          const paragraphs = lines.map(line =>
+          // Create paragraphs for each line of the address
+          // Use 10pt font (size: 20 in half-points) to ensure content fits
+          cellChildren = lines.map(line =>
             new Paragraph({
-              text: line,
-              spacing: { after: 0, line: 240 }, // Single line spacing (240 twips = 1 line)
+              children: [new TextRun({ text: line, size: 20, font: 'Arial' })],
+              spacing: { after: 0, line: 240 }, // Single line spacing (240 = 12pt)
             })
           );
 
-          cells.push(
-            new TableCell({
-              children: paragraphs.length > 0 ? paragraphs : [new Paragraph('')],
-              width: { size: labelWidth, type: WidthType.DXA },
-              verticalAlign: VerticalAlign.CENTER,
-              margins: {
-                top: convertInchesToTwip(0.05),
-                bottom: convertInchesToTwip(0.05),
-                left: convertInchesToTwip(0.1),
-                right: convertInchesToTwip(0.1)
-              },
-              borders: noBorders
-            })
-          );
+          if (cellChildren.length === 0) {
+            cellChildren = [new Paragraph('')];
+          }
           contactIndex++;
         } else {
-          // Empty cell to fill remaining slots
-          cells.push(
-            new TableCell({
-              children: [new Paragraph('')],
-              width: { size: labelWidth, type: WidthType.DXA },
-              borders: noBorders
-            })
-          );
+          // Empty cell
+          cellChildren = [new Paragraph('')];
         }
 
-        // Add horizontal gap cell between labels (except after last column)
-        if (col < labelsPerRow - 1) {
-          cells.push(
-            new TableCell({
-              children: [new Paragraph('')],
-              width: { size: horizontalGap, type: WidthType.DXA },
-              borders: noBorders
-            })
-          );
-        }
+        cells.push(
+          new TableCell({
+            children: cellChildren,
+            width: { size: columnWidth, type: WidthType.DXA },
+            verticalAlign: VerticalAlign.CENTER,
+            margins: {
+              top: cellMarginTop,
+              bottom: cellMarginBottom,
+              left: cellMarginLeft,
+              right: cellMarginRight
+            },
+            borders: noBorders
+          })
+        );
       }
 
       tableRows.push(new TableRow({
@@ -286,7 +300,8 @@ async function saveContactsToWord(contacts, filePath) {
     const table = new Table({
       rows: tableRows,
       layout: TableLayoutType.FIXED,
-      width: { size: convertInchesToTwip(8.125), type: WidthType.DXA }, // 3 labels + 2 gaps
+      width: { size: tableWidth, type: WidthType.DXA },
+      columnWidths: [columnWidth, columnWidth, columnWidth]
     });
 
     sections.push({
@@ -299,8 +314,8 @@ async function saveContactsToWord(contacts, filePath) {
             right: rightMargin
           },
           size: {
-            width: convertInchesToTwip(8.5),
-            height: convertInchesToTwip(11),
+            width: pageWidth,
+            height: pageHeight,
             orientation: PageOrientation.PORTRAIT
           }
         }

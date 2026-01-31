@@ -28,8 +28,10 @@
   },
   "dependencies": {
     "docx": "^8.5.0",
+    "docxtemplater": "^3.67.6",
     "jsdom": "^23.0.0",
     "mammoth": "^1.6.0",
+    "pizzip": "^3.2.0",
     "word-extractor": "^1.0.4"
   },
   "build": {
@@ -41,6 +43,13 @@
     "files": [
       "**/*",
       "!data/*"
+    ],
+    "extraResources": [
+      {
+        "from": "templates",
+        "to": "templates",
+        "filter": ["**/*"]
+      }
     ],
     "mac": {
       "target": [
